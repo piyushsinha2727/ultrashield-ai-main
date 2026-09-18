@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Emerald Mint Wave Color Palette matching user reference */
+    --background: 165 42% 6%; /* #041410 */
+    --foreground: 155 35% 94%; /* #e6f7f2 */
+
+    --card: 165 35% 10%; /* #0a241d */
+    --card-foreground: 155 35% 94%;
+
+    --popover: 165 35% 10%;
+    --popover-foreground: 155 35% 94%;
+
+    --primary: 158 75% 45%; /* #10b981 - Vibrant Emerald */
+    --primary-foreground: 165 50% 5%;
+
+    --secondary: 172 80% 45%; /* #06b6d4 - Neon Cyan / Teal */
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 142 75% 52%; /* #34d399 - Glowing Mint */
+    --accent-foreground: 165 50% 5%;
+
+    --muted: 165 30% 12%; /* #0e2d25 */
+    --muted-foreground: 160 18% 65%;
+
+    --destructive: 348 89% 53%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 165 28% 18%; /* #154237 */
+    --input: 165 25% 14%;
+    --ring: 158 75% 45%;
+
+    --radius: 1rem;
+
+    --safe: 158 75% 45%;
+    --suspicious: 42 93% 50%;
+    --dangerous: 348 89% 53%;
+
+    --glass-bg: rgba(10, 36, 29, 0.72);
+    --glass-border: rgba(16, 185, 129, 0.25);
+    --glass-shadow: 0 12px 40px rgba(2, 20, 15, 0.75);
+
+    --gradient-primary: linear-gradient(135deg, #10b981 0%, #34d399 50%, #06b6d4 100%);
+    --gradient-accent: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    --gradient-aurora: radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.22) 0%, rgba(6, 182, 212, 0.12) 40%, transparent 75%);
+
+    --sidebar-background: 165 42% 6%;
+    --sidebar-foreground: 155 35% 94%;
+    --sidebar-primary: 158 75% 45%;
+    --sidebar-primary-foreground: 165 50% 5%;
+    --sidebar-accent: 165 35% 10%;
+    --sidebar-accent-foreground: 155 35% 94%;
+    --sidebar-border: 165 28% 18%;
+    --sidebar-ring: 158 75% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #041410;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.18) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(52, 211, 153, 0.12) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-xl border border-glass-border;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-input {
+    @apply rounded-lg border border-glass-border bg-muted/60 px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all;
+    backdrop-filter: blur(10px);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .gradient-border {
+    position: relative;
+    border: none;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gradient-primary);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+
+  .glow-effect {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), 0 0 60px rgba(6, 182, 212, 0.2);
+  }
+
+  .brand-logo {
+    background: linear-gradient(145deg, #10b981 0%, #34d399 50%, #06b6d4 100%);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.5), 0 0 30px rgba(6, 182, 212, 0.3);
+  }
+
+  .brand-logo:hover {
+    animation: emeraldGlow 2s infinite;
+  }
+
+  @keyframes emeraldGlow {
+    0%, 100% { box-shadow: 0 0 18px rgba(16, 185, 129, 0.5), 0 0 45px rgba(52, 211, 153, 0.35); }
+    50% { box-shadow: 0 0 24px rgba(6, 182, 212, 0.6), 0 0 50px rgba(16, 185, 129, 0.5); }
+  }
+
+  /* Emerald wave animated particles */
+  @keyframes waveFloat {
+    0% { transform: translateY(0px) rotate(0deg) scale(1); opacity: .45; }
+    50% { transform: translateY(-18px) rotate(3deg) scale(1.06); opacity: .75; }
+    100% { transform: translateY(0px) rotate(0deg) scale(1); opacity: .45; }
+  }
+
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, rgba(16, 185, 129, 0.05) 70%);
+    filter: blur(12px);
+    animation: waveFloat 7s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .particle:nth-child(1) { width: 180px; height: 180px; top: 5%; left: 8%; animation-delay: 0s; }
+  .particle:nth-child(2) { width: 240px; height: 240px; top: 15%; right: 10%; animation-delay: 2s; }
+  .particle:nth-child(3) { width: 150px; height: 150px; bottom: 12%; left: 20%; animation-delay: 3.5s; }
+  .particle:nth-child(4) { width: 200px; height: 200px; bottom: 8%; right: 22%; animation-delay: 1.2s; }
+
+  .status-safe {
+    @apply text-safe border-safe/30 bg-safe/10;
+  }
+
+  .status-suspicious {
+    @apply text-suspicious border-suspicious/30 bg-suspicious/10;
+  }
+
+  .status-dangerous {
+    @apply text-dangerous border-dangerous/30 bg-dangerous/10;
+  }
+}
