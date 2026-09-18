@@ -147,7 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const trimmedInput = email.trim();
     
-    // Check if user entered a Demo ID or email with Demo ID pattern (e.g. CHD-001, TEEN-101, ADT-201)
     const demoIdentity = getDemoIdentity(trimmedInput);
     let resolvedGroup: 'child' | 'teen' | 'adult' = 'adult';
     let resolvedName = 'User';
@@ -192,7 +191,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (err: any) {
-      // Fallback for demo credentials or offline network
       const localUser = createLocalUser(trimmedInput, resolvedName, resolvedGroup, resolvedGovId, resolvedDob);
       localStorage.setItem(DEMO_USER_KEY, JSON.stringify(localUser));
       setUser(localUser);
@@ -202,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     localStorage.removeItem(DEMO_USER_KEY);
+    sessionStorage.removeItem('ultrashield:last-scan-result');
+    sessionStorage.removeItem('ultrashield:last-viewer-url');
     try {
       await supabase.auth.signOut();
     } catch {}

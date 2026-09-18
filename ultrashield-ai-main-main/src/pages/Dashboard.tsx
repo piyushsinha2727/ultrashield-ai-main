@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, LogOut, Baby, UserCheck, ShieldAlert, User, CheckCircle2, Lock } from 'lucide-react';
+import { Shield, LogOut, Baby, UserCheck, ShieldAlert, User, CheckCircle2, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import SearchBar, { isUrl } from '@/components/SearchBar';
@@ -37,21 +37,19 @@ const Dashboard = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   /**
-   * LOAD USER DATA & LOCK AGE GROUP + PER-MODE SEPARATED SEARCH HISTORY
+   * LOAD USER DATA & ISOLATE HISTORY PER AGE GROUP & USER ID
    */
   const loadData = useCallback(async () => {
-    if (!user) return;
-
     let userAgeGroup: 'child' | 'teen' | 'adult' = 'child';
 
-    if (user.user_metadata?.age_group) {
+    if (user?.user_metadata?.age_group) {
       userAgeGroup = user.user_metadata.age_group as any;
     }
 
     setAgeGroup(userAgeGroup);
 
-    // Read per-mode isolated scan history from localStorage
-    const modeStorageKey = `ultrashield:scans:${userAgeGroup}`;
+    // Completely isolated storage key per user & mode
+    const modeStorageKey = `ultrashield:scans:${user?.id || 'guest'}:${userAgeGroup}`;
     const storedScans = localStorage.getItem(modeStorageKey);
 
     if (storedScans) {
@@ -64,73 +62,36 @@ const Dashboard = () => {
       setScans([]);
     }
 
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('name, age_group')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    if (user && !user.id.startsWith('demo-')) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, age_group')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (profile?.age_group) {
-        setAgeGroup(profile.age_group as any);
-      }
+        if (profile?.age_group) {
+          setAgeGroup(profile.age_group as any);
+        }
 
-      const { data: scanData } = await supabase
-        .from('website_scans')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        const { data: scanData } = await supabase
+          .from('website_scans')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-      if (scanData && scanData.length > 0) {
-        setScans(scanData);
-      }
-    } catch {}
+        if (scanData && scanData.length > 0) {
+          setScans(scanData);
+        }
+      } catch {}
+    }
   }, [user]);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login');
-      return;
-    }
-
-    if (user) {
-      loadData();
-    }
-  }, [user, authLoading, navigate, loadData]);
-
-  useEffect(() => {
-    const savedResult = sessionStorage.getItem('ultrashield:last-scan-result');
-    const savedViewerUrl = sessionStorage.getItem('ultrashield:last-viewer-url');
-
-    if (savedResult) {
-      try {
-        setCurrentResult(JSON.parse(savedResult));
-      } catch {
-        sessionStorage.removeItem('ultrashield:last-scan-result');
-      }
-    }
-
-    if (savedViewerUrl) {
-      setViewingUrl(savedViewerUrl);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (currentResult) {
-      sessionStorage.setItem('ultrashield:last-scan-result', JSON.stringify(currentResult));
-      return;
-    }
-    sessionStorage.removeItem('ultrashield:last-scan-result');
-  }, [currentResult]);
-
-  useEffect(() => {
-    if (viewingUrl) {
-      sessionStorage.setItem('ultrashield:last-viewer-url', viewingUrl);
-      return;
-    }
-    sessionStorage.removeItem('ultrashield:last-viewer-url');
-  }, [viewingUrl]);
+    loadData();
+    setCurrentResult(null); // Clear previous user results on auth state change
+  }, [user, loadData]);
 
   /**
    * SEARCH / SCAN HANDLER
@@ -148,7 +109,7 @@ const Dashboard = () => {
     setViewingUrl(null);
 
     const localResult = analyzeUrl(query, ageGroup);
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 350));
 
     let finalResult: ThreatAnalysis = localResult;
 
@@ -196,8 +157,8 @@ const Dashboard = () => {
       created_at: new Date().toISOString(),
     };
 
-    // Save scan isolated to current ageGroup storage
-    const modeStorageKey = `ultrashield:scans:${ageGroup}`;
+    // Save scan ONLY to current user's mode storage key
+    const modeStorageKey = `ultrashield:scans:${user?.id || 'guest'}:${ageGroup}`;
     setScans((prev) => {
       const updated = [newScan, ...prev.filter((s) => s.url !== finalResult.url)].slice(0, 50);
       localStorage.setItem(modeStorageKey, JSON.stringify(updated));
@@ -220,8 +181,22 @@ const Dashboard = () => {
   };
 
   const handleLogout = async () => {
+    setCurrentResult(null);
+    setViewingUrl(null);
+    setScans([]);
     await signOut();
-    navigate('/login');
+    toast.success('Logged out successfully');
+  };
+
+  const handleGuestModeChange = (newGroup: 'child' | 'teen' | 'adult') => {
+    if (user) return; // Locked for logged in users
+    setAgeGroup(newGroup);
+    setCurrentResult(null);
+    const modeStorageKey = `ultrashield:scans:guest:${newGroup}`;
+    const storedScans = localStorage.getItem(modeStorageKey);
+    if (storedScans) setScans(JSON.parse(storedScans));
+    else setScans([]);
+    toast.info(`Guest Protection Mode: ${newGroup.toUpperCase()}`);
   };
 
   const totalThreats = scans.filter((s) => s.status !== 'safe').length;
@@ -256,7 +231,7 @@ const Dashboard = () => {
       {/* HEADER BAR */}
       <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container max-w-6xl flex items-center justify-between py-3">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <div className="brand-logo flex h-10 w-10 items-center justify-center rounded-xl p-2">
               <Shield className="w-5 h-5 text-primary-foreground drop-shadow" />
             </div>
@@ -264,42 +239,74 @@ const Dashboard = () => {
               <h1 className="text-base font-extrabold gradient-text tracking-wide">UltraShield AI</h1>
               <p className="text-xs text-muted-foreground font-medium">Safe Browsing & Age Protection Engine</p>
             </div>
-          </div>
+          </Link>
 
-          {/* Locked Account Protection Badge */}
+          {/* Account Badge or Guest Mode Controls */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsProfileOpen(true)}
-              className="flex items-center gap-2 bg-muted/80 hover:bg-muted p-1.5 px-3 rounded-xl border border-glass-border text-xs transition-all shadow-md group"
-              title="Click to view verified profile details"
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                {ageGroup === 'child' && (
-                  <span className="flex items-center gap-1 text-primary bg-primary/20 px-2.5 py-1 rounded-lg border border-primary/30">
-                    <Baby className="w-4 h-4" /> CHILD ACCOUNT
-                  </span>
-                )}
-                {ageGroup === 'teen' && (
-                  <span className="flex items-center gap-1 text-secondary bg-secondary/20 px-2.5 py-1 rounded-lg border border-secondary/30">
-                    <ShieldAlert className="w-4 h-4" /> TEEN ACCOUNT
-                  </span>
-                )}
-                {ageGroup === 'adult' && (
-                  <span className="flex items-center gap-1 text-accent bg-accent/20 px-2.5 py-1 rounded-lg border border-accent/30">
-                    <UserCheck className="w-4 h-4" /> ADULT ACCOUNT
-                  </span>
-                )}
-              </div>
+            {user ? (
+              <>
+                <button
+                  onClick={() => setIsProfileOpen(true)}
+                  className="flex items-center gap-2 bg-muted/80 hover:bg-muted p-1.5 px-3 rounded-xl border border-glass-border text-xs transition-all shadow-md group"
+                  title="Click to view verified profile details"
+                >
+                  <div className="flex items-center gap-1.5 font-bold">
+                    {ageGroup === 'child' && (
+                      <span className="flex items-center gap-1 text-primary bg-primary/20 px-2.5 py-1 rounded-lg border border-primary/30">
+                        <Baby className="w-4 h-4" /> CHILD ACCOUNT
+                      </span>
+                    )}
+                    {ageGroup === 'teen' && (
+                      <span className="flex items-center gap-1 text-secondary bg-secondary/20 px-2.5 py-1 rounded-lg border border-secondary/30">
+                        <ShieldAlert className="w-4 h-4" /> TEEN ACCOUNT
+                      </span>
+                    )}
+                    {ageGroup === 'adult' && (
+                      <span className="flex items-center gap-1 text-accent bg-accent/20 px-2.5 py-1 rounded-lg border border-accent/30">
+                        <UserCheck className="w-4 h-4" /> ADULT ACCOUNT
+                      </span>
+                    )}
+                  </div>
 
-              <div className="hidden sm:flex items-center gap-1 text-muted-foreground group-hover:text-foreground text-[11px] font-mono border-l border-border pl-2">
-                <span>{govId}</span>
-                <Lock className="w-3 h-3 text-muted-foreground" />
-              </div>
-            </button>
+                  <div className="hidden sm:flex items-center gap-1 text-muted-foreground group-hover:text-foreground text-[11px] font-mono border-l border-border pl-2">
+                    <span>{govId}</span>
+                    <Lock className="w-3 h-3 text-muted-foreground" />
+                  </div>
+                </button>
 
-            <Button variant="ghost" size="sm" onClick={handleLogout} title="Sign Out">
-              <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-            </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout} title="Sign Out">
+                  <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-muted/70 p-1 rounded-xl border border-glass-border text-xs">
+                  <button
+                    onClick={() => handleGuestModeChange('child')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${ageGroup === 'child' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                  >
+                    Child
+                  </button>
+                  <button
+                    onClick={() => handleGuestModeChange('teen')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${ageGroup === 'teen' ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground'}`}
+                  >
+                    Teen
+                  </button>
+                  <button
+                    onClick={() => handleGuestModeChange('adult')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${ageGroup === 'adult' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
+                  >
+                    Adult
+                  </button>
+                </div>
+                <Link to="/login">
+                  <Button variant="cyber" size="sm" className="text-xs h-9">
+                    <LogIn className="w-3.5 h-3.5 mr-1" /> Sign In
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -341,12 +348,14 @@ const Dashboard = () => {
       </main>
 
       {/* User Identity Details Modal */}
-      <UserProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        user={user}
-        ageGroup={ageGroup}
-      />
+      {user && (
+        <UserProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          user={user}
+          ageGroup={ageGroup}
+        />
+      )}
 
       <Footer />
     </div>
