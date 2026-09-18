@@ -37,7 +37,7 @@ const Dashboard = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   /**
-   * LOAD USER DATA & LOCK AGE GROUP TO VERIFIED PROFILE
+   * LOAD USER DATA & LOCK AGE GROUP + PER-MODE SEPARATED SEARCH HISTORY
    */
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -48,6 +48,22 @@ const Dashboard = () => {
       userAgeGroup = user.user_metadata.age_group as any;
     }
 
+    setAgeGroup(userAgeGroup);
+
+    // Read per-mode isolated scan history from localStorage
+    const modeStorageKey = `ultrashield:scans:${userAgeGroup}`;
+    const storedScans = localStorage.getItem(modeStorageKey);
+
+    if (storedScans) {
+      try {
+        setScans(JSON.parse(storedScans));
+      } catch {
+        setScans([]);
+      }
+    } else {
+      setScans([]);
+    }
+
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -56,7 +72,7 @@ const Dashboard = () => {
         .maybeSingle();
 
       if (profile?.age_group) {
-        userAgeGroup = profile.age_group as any;
+        setAgeGroup(profile.age_group as any);
       }
 
       const { data: scanData } = await supabase
@@ -68,16 +84,8 @@ const Dashboard = () => {
 
       if (scanData && scanData.length > 0) {
         setScans(scanData);
-      } else {
-        const storedScans = localStorage.getItem('ultrashield:local_scans');
-        if (storedScans) setScans(JSON.parse(storedScans));
       }
-    } catch {
-      const storedScans = localStorage.getItem('ultrashield:local_scans');
-      if (storedScans) setScans(JSON.parse(storedScans));
-    }
-
-    setAgeGroup(userAgeGroup);
+    } catch {}
   }, [user]);
 
   useEffect(() => {
@@ -140,7 +148,7 @@ const Dashboard = () => {
     setViewingUrl(null);
 
     const localResult = analyzeUrl(query, ageGroup);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 300));
 
     let finalResult: ThreatAnalysis = localResult;
 
@@ -188,9 +196,11 @@ const Dashboard = () => {
       created_at: new Date().toISOString(),
     };
 
+    // Save scan isolated to current ageGroup storage
+    const modeStorageKey = `ultrashield:scans:${ageGroup}`;
     setScans((prev) => {
       const updated = [newScan, ...prev.filter((s) => s.url !== finalResult.url)].slice(0, 50);
-      localStorage.setItem('ultrashield:local_scans', JSON.stringify(updated));
+      localStorage.setItem(modeStorageKey, JSON.stringify(updated));
       return updated;
     });
 
@@ -224,7 +234,6 @@ const Dashboard = () => {
     securityScore: 94,
   };
 
-  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const govId = user?.user_metadata?.gov_id || (ageGroup === 'child' ? 'CHD-001' : ageGroup === 'teen' ? 'TEEN-101' : 'ADT-201');
 
   if (authLoading) {
@@ -257,7 +266,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Locked Account Protection Badge (Clickable to open User Profile Details Modal) */}
+          {/* Locked Account Protection Badge */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsProfileOpen(true)}
@@ -306,7 +315,7 @@ const Dashboard = () => {
             status={currentResult.status}
             category={currentResult.category ?? 'Unknown'}
             confidence={currentResult.confidence ?? 0}
-            detectionType={currentResult.detection_methods?.[0] ?? '150+ Pattern Engine'}
+            detectionType={currentResult.detection_methods?.[0] ?? '250+ Pattern Engine'}
             recommendation={currentResult.recommendation ?? ''}
             reason={currentResult.reason}
             details={currentResult.details}

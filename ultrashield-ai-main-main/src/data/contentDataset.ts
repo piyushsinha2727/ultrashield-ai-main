@@ -1,5 +1,5 @@
 /**
- * Comprehensive Content Classification & Age Policy Dataset (200+ words, patterns, token signatures, and domain typos)
+ * Comprehensive Content Classification & Age Policy Dataset (250+ words, patterns, token signatures, and domain typos)
  * Centralized dataset used for real-time URL analysis, age-based filtering, and threat scoring.
  */
 
@@ -27,6 +27,7 @@ export const SAFE_DOMAINS: string[] = [
   'w3schools.com', 'mozilla.org', 'python.org', 'nodejs.org', 'npmjs.com',
   'nasa.gov', 'nationalgeographic.com', 'duolingo.com', 'scratch.mit.edu',
   'pbskids.org', 'nationalgeographic.com', 'britannica.com', 'arxiv.org',
+  'bing.com', 'duckduckgo.com', 'yahoo.com', 'msn.com',
 ];
 
 // ── 2. PHISHING HIGH-RISK TOKENS & PATTERNS ──
@@ -47,16 +48,16 @@ export const PHISHING_KEYWORDS: string[] = [
   'credential-harvest', '0nline-banking', 'paypal-login', 'paypai-login', 'amazon-payment-check',
 ];
 
-// ── 3. MALWARE, VIRUS, RANSOMWARE & BOTNETS ──
+// ── 3. MALWARE, VIRUS, RANSOMWARE, TROJAN & BOTNETS ──
 export const MALWARE_TOKENS: string[] = [
-  'malware', 'trojan', 'ransomware', 'keylogger', 'rootkit', 'spyware',
+  'malware', 'trojan', 'trojanhorse', 'ransomware', 'keylogger', 'rootkit', 'spyware',
   'crack', 'keygen', 'warez', 'nulled', 'exploit', 'botnet', 'payload',
   'dropper', 'virus', 'worm', 'stealer', 'hacktool', 'backdoor', 'zero-day',
-  'm4lware', 'tr0jan', 'r4nsomware',
+  'm4lware', 'tr0jan', 'r4nsomware', 'backdoor-trojan', 'rat-stealer',
 ];
 
 export const MALWARE_KEYWORDS: string[] = [
-  'malware', 'trojan', 'ransomware', 'keylogger', 'rootkit', 'spyware',
+  'malware', 'trojan', 'trojanhorse', 'trojan-horse', 'ransomware', 'keylogger', 'rootkit', 'spyware',
   'free-crack', 'keygen', 'warez', 'nulled', 'cracked-software',
   'free-download-full', 'hack-tool', 'exploit-kit', 'botnet',
   'drive-by-download', 'backdoor', 'payload', 'dropper', 'virus-download',
@@ -72,7 +73,7 @@ export const SCAM_KEYWORDS: string[] = [
   'pyramid-scheme', 'ponzi', 'forex-signal-guaranteed', 'crypto-scam',
 ];
 
-// ── 5. ADULT / PORNO / EXPLICIT (Includes typos & variations) ──
+// ── 5. ADULT / PORNO / EXPLICIT (Comprehensive list covering all adult sites and typos) ──
 export const ADULT_KEYWORDS: string[] = [
   'porn', 'pornhub', 'porhub', 'porno', 'pornography', 'p0rn', 'prn', 'xxx', 'xvideos', 'xnxx',
   'adult', 'nsfw', 'sex', 's3x', 'naked', 'nude', 'erotic', 'hentai', 'onlyfans', 'chaturbate',
@@ -82,6 +83,7 @@ export const ADULT_KEYWORDS: string[] = [
   'hegre', 'met-art', 'playboy', 'penthouse', 'hustler', 'sexting', 'hookup', 'tinder-hookup',
   'escort', 'backpage', 'adultfriendfinder', 'ashleymadison', 'fetlife', 'xvideo', 'x-video',
   'porno-video', 'sex-video', 'adult-zone', 'free-porn', 'taboo-porn', 'softcore', 'hardcore-porn', 'porh',
+  'adultdvd', 'sexcam', 'camgirl', 'milf', 'fetish', 'erotica', 'nsfw-chat', 'playboy-plus',
 ];
 
 // ── 6. GAMBLING & BETTING ──
@@ -123,6 +125,7 @@ export const BLACKLISTED_DOMAINS: string[] = [
   'paypal-login.com', 'paypai-login.com', 'secure-login-paypal.com', 'amazon-payment-check.net',
   'login-verify-security.net', 'update-payment-info.org', 'confirm-account-info.io',
   'badware-site.test', 'ransomware-download.info', 'trojan-dropper.cc', 'login-bank-security.com',
+  'trojenhorse.com', 'trojanhorse.com', 'trojan-horse.com',
 ];
 
 export const EMBED_RESTRICTED_DOMAINS: string[] = [

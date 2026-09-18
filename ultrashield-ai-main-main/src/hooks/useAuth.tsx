@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
+import { getDemoIdentity } from '@/data/demoIdentityDataset';
 
 interface AuthContextType {
   user: User | null;
@@ -83,8 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user_metadata: {
         name,
         age_group: ageGroup,
-        gov_id: govId || 'CHD-001',
-        date_of_birth: dob || '2015-10-03',
+        gov_id: govId || (ageGroup === 'child' ? 'CHD-001' : ageGroup === 'teen' ? 'TEEN-101' : 'ADT-201'),
+        date_of_birth: dob || (ageGroup === 'child' ? '2015-10-03' : ageGroup === 'teen' ? '2009-05-09' : '1992-05-15'),
       },
       aud: 'authenticated',
       created_at: new Date().toISOString(),
@@ -144,17 +145,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    const trimmedInput = email.trim();
+    
+    // Check if user entered a Demo ID or email with Demo ID pattern (e.g. CHD-001, TEEN-101, ADT-201)
+    const demoIdentity = getDemoIdentity(trimmedInput);
+    let resolvedGroup: 'child' | 'teen' | 'adult' = 'adult';
+    let resolvedName = 'User';
+    let resolvedGovId = 'ADT-201';
+    let resolvedDob = '1992-05-15';
+
+    if (demoIdentity) {
+      resolvedGroup = demoIdentity.ageGroup;
+      resolvedName = demoIdentity.name;
+      resolvedGovId = demoIdentity.id;
+      resolvedDob = demoIdentity.dob;
+    } else if (trimmedInput.toLowerCase().includes('chd') || trimmedInput.toLowerCase().includes('child')) {
+      resolvedGroup = 'child';
+      resolvedName = 'Aarav Kumar';
+      resolvedGovId = 'CHD-001';
+      resolvedDob = '2015-10-03';
+    } else if (trimmedInput.toLowerCase().includes('teen')) {
+      resolvedGroup = 'teen';
+      resolvedName = 'Rahul Sharma';
+      resolvedGovId = 'TEEN-101';
+      resolvedDob = '2009-05-09';
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: trimmedInput, password });
       if (error) throw error;
-    } catch (err: any) {
-      if (err.message?.includes('Failed to fetch') || err.message?.includes('fetch') || err.message?.includes('Invalid login credentials')) {
-        const localUser = createLocalUser(email, email.split('@')[0], 'adult', 'ADT-201', '1995-05-15');
-        localStorage.setItem(DEMO_USER_KEY, JSON.stringify(localUser));
-        setUser(localUser);
-        return;
+      if (data?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('age_group, name, government_id, date_of_birth')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (profile) {
+          data.user.user_metadata = {
+            ...data.user.user_metadata,
+            age_group: profile.age_group,
+            name: profile.name,
+            gov_id: profile.government_id,
+            date_of_birth: profile.date_of_birth,
+          };
+        }
       }
-      throw err;
+    } catch (err: any) {
+      // Fallback for demo credentials or offline network
+      const localUser = createLocalUser(trimmedInput, resolvedName, resolvedGroup, resolvedGovId, resolvedDob);
+      localStorage.setItem(DEMO_USER_KEY, JSON.stringify(localUser));
+      setUser(localUser);
+      return;
     }
   };
 

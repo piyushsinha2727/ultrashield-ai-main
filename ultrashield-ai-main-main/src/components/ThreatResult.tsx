@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Shield, AlertTriangle, XOctagon, ExternalLink, CheckCircle } from 'lucide-react';
+import { Shield, AlertTriangle, XOctagon, ExternalLink, CheckCircle, Search, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ThreatResultProps {
@@ -42,6 +42,21 @@ const ThreatResult = ({ url, riskScore, status, category, confidence, detectionT
     },
   }[status];
 
+  const handleGoogleSearch = () => {
+    const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleEdgeSearch = () => {
+    const targetUrl = `https://www.bing.com/search?q=${encodeURIComponent(url)}`;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleVisitSite = () => {
+    const targetUrl = url.startsWith('http') ? url : `https://${url}`;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -51,7 +66,7 @@ const ThreatResult = ({ url, riskScore, status, category, confidence, detectionT
       <div className="flex items-start gap-4">
         <div className={config.colorClass}>{config.icon}</div>
         <div className="flex-1">
-          <h3 className={`text-lg font-semibold mb-1 ${config.colorClass}`}>{config.title}</h3>
+          <h3 className={`text-lg font-bold mb-1 ${config.colorClass}`}>{config.title}</h3>
           <p className="text-sm text-muted-foreground font-mono mb-2 break-all">{url}</p>
           <div className="mb-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span className="px-2 py-1 rounded-md bg-background/70 border border-border">Category: {category}</span>
@@ -94,19 +109,35 @@ const ThreatResult = ({ url, riskScore, status, category, confidence, detectionT
             <span className={`text-sm font-bold ${config.colorClass}`}>{riskScore}/100</span>
           </div>
 
-          <div className="flex gap-3">
-            {status === 'safe' && onProceed && (
-              <Button variant="cyber" size="sm" onClick={onProceed}>
-                <ExternalLink className="w-3 h-3 mr-1" /> Visit Site
-              </Button>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {status === 'safe' && (
+              <>
+                <Button variant="cyber" size="sm" onClick={handleVisitSite} className="text-xs">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Visit Website
+                </Button>
+                <Button variant="secondary" size="sm" onClick={handleGoogleSearch} className="text-xs bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40">
+                  <Search className="w-3.5 h-3.5 mr-1.5" /> Search on Google
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleEdgeSearch} className="text-xs border border-secondary/40 text-secondary hover:bg-secondary/20">
+                  <Compass className="w-3.5 h-3.5 mr-1.5" /> Search on Bing / Edge
+                </Button>
+              </>
             )}
-            {status === 'suspicious' && onProceed && (
-              <Button variant="cyber-outline" size="sm" onClick={onProceed}>
-                Proceed Anyway
-              </Button>
+
+            {status === 'suspicious' && (
+              <>
+                <Button variant="cyber-outline" size="sm" onClick={handleVisitSite} className="text-xs">
+                  Proceed Anyway
+                </Button>
+                <Button variant="secondary" size="sm" onClick={handleGoogleSearch} className="text-xs bg-muted text-foreground">
+                  <Search className="w-3.5 h-3.5 mr-1.5" /> Search on Google
+                </Button>
+              </>
             )}
+
             {onDismiss && (
-              <Button variant="ghost" size="sm" onClick={onDismiss}>
+              <Button variant="ghost" size="sm" onClick={onDismiss} className="text-xs">
                 Dismiss
               </Button>
             )}
