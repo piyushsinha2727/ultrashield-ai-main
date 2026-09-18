@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/ultrashield-ai-main-main/index.html" }
+  ]
+}
