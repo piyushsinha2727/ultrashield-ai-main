@@ -11,10 +11,12 @@ import {
   Globe,
   ShieldCheck,
   Database,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThreatResult from '@/components/ThreatResult';
 import { analyzeUrl, ThreatAnalysis } from '@/lib/threatEngine';
+import { useAuth } from '@/hooks/useAuth';
 
 const sectionFade = {
   hidden: { opacity: 0, y: 20 },
@@ -22,6 +24,7 @@ const sectionFade = {
 };
 
 const Landing = () => {
+  const { user, signOut } = useAuth();
   const [scrolling, setScrolling] = useState(false);
   const [url, setUrl] = useState('');
   const [scanResult, setScanResult] = useState<ThreatAnalysis | null>(null);
@@ -98,9 +101,22 @@ const Landing = () => {
             <a href="#stats" className="hover:text-primary">Security</a>
             <a href="#footer" className="hover:text-primary">Docs</a>
           </nav>
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground">Login</Link>
-            <Button variant="cyber" size="sm" onClick={reviewRegister}>Get Started</Button>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                <Link to="/dashboard" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+                  Go to Dashboard
+                </Link>
+                <Button variant="ghost" size="sm" onClick={() => signOut()} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                  <LogOut className="w-4 h-4" /> Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground">Login</Link>
+                <Button variant="cyber" size="sm" onClick={reviewRegister}>Get Started</Button>
+              </>
+            )}
           </div>
         </div>
       </header>

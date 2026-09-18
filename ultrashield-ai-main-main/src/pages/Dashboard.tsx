@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, LogOut, Baby, UserCheck, ShieldAlert, User, CheckCircle2, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,19 +37,30 @@ const Dashboard = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   /**
+   * AUTH REDIRECT: Logged out users are redirected to Home Page
+   */
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+
+  /**
    * LOAD USER DATA & ISOLATE HISTORY PER AGE GROUP & USER ID
    */
   const loadData = useCallback(async () => {
+    if (!user) return;
+
     let userAgeGroup: 'child' | 'teen' | 'adult' = 'child';
 
-    if (user?.user_metadata?.age_group) {
+    if (user.user_metadata?.age_group) {
       userAgeGroup = user.user_metadata.age_group as any;
     }
 
     setAgeGroup(userAgeGroup);
 
     // Completely isolated storage key per user & mode
-    const modeStorageKey = `ultrashield:scans:${user?.id || 'guest'}:${userAgeGroup}`;
+    const modeStorageKey = `ultrashield:scans:${user.id}:${userAgeGroup}`;
     const storedScans = localStorage.getItem(modeStorageKey);
 
     if (storedScans) {
@@ -62,7 +73,7 @@ const Dashboard = () => {
       setScans([]);
     }
 
-    if (user && !user.id.startsWith('demo-')) {
+    if (!user.id.startsWith('demo-')) {
       try {
         const { data: profile } = await supabase
           .from('profiles')
@@ -89,9 +100,44 @@ const Dashboard = () => {
   }, [user]);
 
   useEffect(() => {
-    loadData();
-    setCurrentResult(null); // Clear previous user results on auth state change
+    if (user) {
+      loadData();
+      setCurrentResult(null);
+    }
   }, [user, loadData]);
+
+  useEffect(() => {
+    const savedResult = sessionStorage.getItem('ultrashield:last-scan-result');
+    const savedViewerUrl = sessionStorage.getItem('ultrashield:last-viewer-url');
+
+    if (savedResult) {
+      try {
+        setCurrentResult(JSON.parse(savedResult));
+      } catch {
+        sessionStorage.removeItem('ultrashield:last-scan-result');
+      }
+    }
+
+    if (savedViewerUrl) {
+      setViewingUrl(savedViewerUrl);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentResult) {
+      sessionStorage.setItem('ultrashield:last-scan-result', JSON.stringify(currentResult));
+      return;
+    }
+    sessionStorage.removeItem('ultrashield:last-scan-result');
+  }, [currentResult]);
+
+  useEffect(() => {
+    if (viewingUrl) {
+      sessionStorage.setItem('ultrashield:last-viewer-url', viewingUrl);
+      return;
+    }
+    sessionStorage.removeItem('ultrashield:last-viewer-url');
+  }, [viewingUrl]);
 
   /**
    * SEARCH / SCAN HANDLER
@@ -186,17 +232,7 @@ const Dashboard = () => {
     setScans([]);
     await signOut();
     toast.success('Logged out successfully');
-  };
-
-  const handleGuestModeChange = (newGroup: 'child' | 'teen' | 'adult') => {
-    if (user) return; // Locked for logged in users
-    setAgeGroup(newGroup);
-    setCurrentResult(null);
-    const modeStorageKey = `ultrashield:scans:guest:${newGroup}`;
-    const storedScans = localStorage.getItem(modeStorageKey);
-    if (storedScans) setScans(JSON.parse(storedScans));
-    else setScans([]);
-    toast.info(`Guest Protection Mode: ${newGroup.toUpperCase()}`);
+    navigate('/', { replace: true });
   };
 
   const totalThreats = scans.filter((s) => s.status !== 'safe').length;
@@ -217,6 +253,10 @@ const Dashboard = () => {
         <Shield className="w-10 h-10 text-primary animate-pulse" />
       </div>
     );
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -241,72 +281,40 @@ const Dashboard = () => {
             </div>
           </Link>
 
-          {/* Account Badge or Guest Mode Controls */}
+          {/* Account Badge & Sign Out Button */}
           <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <button
-                  onClick={() => setIsProfileOpen(true)}
-                  className="flex items-center gap-2 bg-muted/80 hover:bg-muted p-1.5 px-3 rounded-xl border border-glass-border text-xs transition-all shadow-md group"
-                  title="Click to view verified profile details"
-                >
-                  <div className="flex items-center gap-1.5 font-bold">
-                    {ageGroup === 'child' && (
-                      <span className="flex items-center gap-1 text-primary bg-primary/20 px-2.5 py-1 rounded-lg border border-primary/30">
-                        <Baby className="w-4 h-4" /> CHILD ACCOUNT
-                      </span>
-                    )}
-                    {ageGroup === 'teen' && (
-                      <span className="flex items-center gap-1 text-secondary bg-secondary/20 px-2.5 py-1 rounded-lg border border-secondary/30">
-                        <ShieldAlert className="w-4 h-4" /> TEEN ACCOUNT
-                      </span>
-                    )}
-                    {ageGroup === 'adult' && (
-                      <span className="flex items-center gap-1 text-accent bg-accent/20 px-2.5 py-1 rounded-lg border border-accent/30">
-                        <UserCheck className="w-4 h-4" /> ADULT ACCOUNT
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="hidden sm:flex items-center gap-1 text-muted-foreground group-hover:text-foreground text-[11px] font-mono border-l border-border pl-2">
-                    <span>{govId}</span>
-                    <Lock className="w-3 h-3 text-muted-foreground" />
-                  </div>
-                </button>
-
-                <Button variant="ghost" size="sm" onClick={handleLogout} title="Sign Out">
-                  <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-                </Button>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center bg-muted/70 p-1 rounded-xl border border-glass-border text-xs">
-                  <button
-                    onClick={() => handleGuestModeChange('child')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${ageGroup === 'child' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                  >
-                    Child
-                  </button>
-                  <button
-                    onClick={() => handleGuestModeChange('teen')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${ageGroup === 'teen' ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground'}`}
-                  >
-                    Teen
-                  </button>
-                  <button
-                    onClick={() => handleGuestModeChange('adult')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${ageGroup === 'adult' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'}`}
-                  >
-                    Adult
-                  </button>
-                </div>
-                <Link to="/login">
-                  <Button variant="cyber" size="sm" className="text-xs h-9">
-                    <LogIn className="w-3.5 h-3.5 mr-1" /> Sign In
-                  </Button>
-                </Link>
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className="flex items-center gap-2 bg-muted/80 hover:bg-muted p-1.5 px-3 rounded-xl border border-glass-border text-xs transition-all shadow-md group"
+              title="Click to view verified profile details"
+            >
+              <div className="flex items-center gap-1.5 font-bold">
+                {ageGroup === 'child' && (
+                  <span className="flex items-center gap-1 text-primary bg-primary/20 px-2.5 py-1 rounded-lg border border-primary/30">
+                    <Baby className="w-4 h-4" /> CHILD ACCOUNT
+                  </span>
+                )}
+                {ageGroup === 'teen' && (
+                  <span className="flex items-center gap-1 text-secondary bg-secondary/20 px-2.5 py-1 rounded-lg border border-secondary/30">
+                    <ShieldAlert className="w-4 h-4" /> TEEN ACCOUNT
+                  </span>
+                )}
+                {ageGroup === 'adult' && (
+                  <span className="flex items-center gap-1 text-accent bg-accent/20 px-2.5 py-1 rounded-lg border border-accent/30">
+                    <UserCheck className="w-4 h-4" /> ADULT ACCOUNT
+                  </span>
+                )}
               </div>
-            )}
+
+              <div className="hidden sm:flex items-center gap-1 text-muted-foreground group-hover:text-foreground text-[11px] font-mono border-l border-border pl-2">
+                <span>{govId}</span>
+                <Lock className="w-3 h-3 text-muted-foreground" />
+              </div>
+            </button>
+
+            <Button variant="ghost" size="sm" onClick={handleLogout} title="Sign Out">
+              <LogOut className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+            </Button>
           </div>
         </div>
       </header>
